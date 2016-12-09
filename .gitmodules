@@ -1,0 +1,6 @@
+[submodule "external/xwt"]
+	path = external/xwt
+	url = https://github.com/mono/xwt.git
+[submodule "external/java.interop"]
+	path = external/java.interop
+	url = https://github.com/xamarin/java.interop.git
