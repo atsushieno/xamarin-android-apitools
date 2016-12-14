@@ -36,11 +36,13 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			var tree = new TreeView ();
 			var nameField = new DataField<string> ();
-			var treeModel = new TreeStore (nameField);
+			var sourceField = new DataField<string> ();
+			var treeModel = new TreeStore (nameField, sourceField);
 			tree.DataSource = treeModel;
 			tree.Columns.Add ("Name", nameField);
+			tree.Columns.Add ("Source", sourceField);
 			model.ApiSetUpdated += (sender, e) => {
-				treeModel.Clear ();
+				//treeModel.Clear ();
 				foreach (var pkg in model.Api.Packages.OrderBy (p => p.Name)) {
 					Application.InvokeAsync (() => {
 						var pkgNode = treeModel.AddNode ();
@@ -51,16 +53,19 @@ namespace Xamarin.Android.Tools.ClassBrowser
 							foreach (var fld in type.Members.OfType<JavaField> ()) {
 								var fieldNode = typeNode.AddChild ();
 								fieldNode.SetValue (nameField, "[F]" + fld.Name);
+								fieldNode.SetValue (sourceField, fld.GetExtension<SourceIdentifier> ()?.SourceUri);
 								fieldNode.MoveToParent ();
 							}
 							foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
 								var ctorNode = typeNode.AddChild ();
 								ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
+								ctorNode.SetValue (sourceField, ctor.GetExtension<SourceIdentifier> ()?.SourceUri);
 								ctorNode.MoveToParent ();
 							}
 							foreach (var method in type.Members.OfType<JavaMethod> ()) {
 								var methodNode = typeNode.AddChild ();
 								methodNode.SetValue (nameField, "[M]" + method.ToString ());
+								methodNode.SetValue (sourceField, method.GetExtension<SourceIdentifier> ()?.SourceUri);
 								methodNode.MoveToParent ();
 							}
 							typeNode.MoveToParent ();
@@ -78,6 +83,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			Close ();
 		}
 
+		Dictionary<string, string> fileIds = new Dictionary<string, string> ();
+
+		string GetFileId (string file)
+		{
+			string id;
+			if (!fileIds.TryGetValue (file, out id)) {
+				id = fileIds.Count.ToString ();
+				fileIds [file] = id;
+			}
+			return id;
+		}
+
 		void OpenJavaLibraries ()
 		{
 			string [] results = null;
@@ -85,18 +102,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				Title = "Select .jar file to load",
 				Multiselect = true,
 			}) {
-				dlg.Filters.Add (new FileDialogFilter ("jar files", "*.jar"));
-				// TODO: aar support would be fancy
+				dlg.Filters.Add (new FileDialogFilter ("Any file", "*"));
+				dlg.Filters.Add (new FileDialogFilter ("Jar files", "*.jar"));
+				dlg.Filters.Add (new FileDialogFilter ("Aar files", "*.aar"));
 				dlg.Filters.Add (new FileDialogFilter ("DLL files", "*.dll"));
 				dlg.Filters.Add (new FileDialogFilter ("XML files", "*.xml"));
-				dlg.Filters.Add (new FileDialogFilter ("Any file", "*"));
 
 				dlg.Run ();
 				results = dlg.FileNames;
 			}
 			ThreadPool.QueueUserWorkItem ((state) => {
 				if (results != null)
-					model.LoadFiles (results);
+					model.LoadFiles (results, f => GetFileId (f));
 			}, null);
 		}
 	}
