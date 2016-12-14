@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xamarin.Android.Tools.Bytec
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xamarin.Android.Tools.ApiXmlAdjuster", "external\java.interop\src\Xamarin.Android.Tools.ApiXmlAdjuster\Xamarin.Android.Tools.ApiXmlAdjuster.csproj", "{1268EADF-8344-431C-81F6-FCB7CBC99F49}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libZipSharp", "external\LibZipSharp\libZipSharp.csproj", "{E248B2CA-303B-4645-ADDC-9D4459D550FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -37,5 +39,9 @@ Global
 		{1268EADF-8344-431C-81F6-FCB7CBC99F49}.Debug|x86.Build.0 = Debug|Any CPU
 		{1268EADF-8344-431C-81F6-FCB7CBC99F49}.Release|x86.ActiveCfg = Release|Any CPU
 		{1268EADF-8344-431C-81F6-FCB7CBC99F49}.Release|x86.Build.0 = Release|Any CPU
+		{E248B2CA-303B-4645-ADDC-9D4459D550FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E248B2CA-303B-4645-ADDC-9D4459D550FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{E248B2CA-303B-4645-ADDC-9D4459D550FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{E248B2CA-303B-4645-ADDC-9D4459D550FD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

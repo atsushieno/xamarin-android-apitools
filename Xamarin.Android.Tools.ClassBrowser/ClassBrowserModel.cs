@@ -37,7 +37,15 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 		void LoadAar (string file)
 		{
-			throw new NotImplementedException ();
+			using (var zip = Xamarin.Tools.Zip.ZipArchive.Open (file, FileMode.Open)) {
+				foreach (var jar in zip.AsEnumerable ()
+					 .Where (e => Path.GetExtension (e.FullName).Equals (".jar", StringComparison.OrdinalIgnoreCase))) {
+					var ms = new MemoryStream ();
+					string jarfile = jar.Extract ();
+					LoadJar (jarfile);
+					File.Delete (jarfile);
+				}
+			}
 		}
 
 		void LoadJar (string file)
@@ -134,14 +142,6 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		void LoadXml (XmlReader reader)
 		{
 			Api.Load (reader, false);
-		}
-
-		List<ClassPath> libs = new List<ClassPath> ();
-
-		public IList<ClassPath> Libraries {
-			get {
-				return libs;
-			}
 		}
 
 		public event EventHandler ApiSetUpdated;

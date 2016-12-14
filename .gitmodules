@@ -4,3 +4,6 @@
 [submodule "external/java.interop"]
 	path = external/java.interop
 	url = https://github.com/xamarin/java.interop.git
+[submodule "external/LibZipSharp"]
+	path = external/LibZipSharp
+	url = https://github.com/grendello/LibZipSharp.git

@@ -67,6 +67,10 @@
       <Project>{1268EADF-8344-431C-81F6-FCB7CBC99F49}</Project>
       <Name>Xamarin.Android.Tools.ApiXmlAdjuster</Name>
     </ProjectReference>
+    <ProjectReference Include="..\external\LibZipSharp\libZipSharp.csproj">
+      <Project>{E248B2CA-303B-4645-ADDC-9D4459D550FD}</Project>
+      <Name>libZipSharp</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
