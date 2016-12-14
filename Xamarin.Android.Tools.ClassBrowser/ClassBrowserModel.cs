@@ -12,11 +12,11 @@ namespace Xamarin.Android.Tools.ClassBrowser
 {
 	public class ClassBrowserModel
 	{
-		public void LoadFiles (string [] files, Func<string, string> mapFileToIdentifier)
+		public void LoadFiles (string [] files)
 		{
 			Api = new JavaApi ();
 			foreach (var file in files) {
-				var identifer = mapFileToIdentifier (file);
+				var identifer = GetFileId (file);
 				switch (Path.GetExtension (file.ToLowerInvariant ())) {
 				case ".aar":
 					LoadAar (file, identifer);
@@ -172,5 +172,17 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		}
 
 		public JavaApi Api { get; private set; }
+
+		string GetFileId (string file)
+		{
+			string id;
+			if (!FileIds.TryGetValue (file, out id)) {
+				id = FileIds.Count.ToString ();
+				FileIds [file] = id;
+			}
+			return id;
+		}
+
+		public IDictionary<string, string> FileIds { get; private set; } = new Dictionary<string, string> ();
 	}
 }

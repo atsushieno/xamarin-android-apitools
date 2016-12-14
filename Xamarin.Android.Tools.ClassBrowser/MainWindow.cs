@@ -16,6 +16,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			Width = 600;
 			Height = 500;
 			var vbox = new VBox ();
+
 			var menu = new Menu ();
 			var commands = new List<KeyValuePair<string,List<KeyValuePair<Command, Action>>>> ();
 			var fileCommands = new List<KeyValuePair<Command, Action>> ();
@@ -34,7 +35,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			}
 			this.MainMenu = menu;
 
-			var tree = new TreeView ();
+			var vpaned = new VPaned ();
+
+			var idList = new ListBox () { ExpandHorizontal = true };
+			model.ApiSetUpdated += (sender, e) => {
+				idList.Items.Clear ();
+				foreach (var p in model.FileIds)
+					idList.Items.Add (string.Format ("{0}: {1}", p.Value, p.Key));
+			};
+			vpaned.Panel1.Content = idList;
+
+
+			var tree = new TreeView () { ExpandVertical = true, ExpandHorizontal = true };
 			var nameField = new DataField<string> ();
 			var sourceField = new DataField<string> ();
 			var treeModel = new TreeStore (nameField, sourceField);
@@ -74,25 +86,16 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				}
 			};
 
-			vbox.PackStart (tree, true, true);
+			vpaned.Panel2.Content = tree;
+
+			vbox.PackStart (vpaned, true, true);
+
 			Content = vbox;
 		}
 
 		void CloseApplicationWindow ()
 		{
 			Close ();
-		}
-
-		Dictionary<string, string> fileIds = new Dictionary<string, string> ();
-
-		string GetFileId (string file)
-		{
-			string id;
-			if (!fileIds.TryGetValue (file, out id)) {
-				id = fileIds.Count.ToString ();
-				fileIds [file] = id;
-			}
-			return id;
 		}
 
 		void OpenJavaLibraries ()
@@ -113,7 +116,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			}
 			ThreadPool.QueueUserWorkItem ((state) => {
 				if (results != null)
-					model.LoadFiles (results, f => GetFileId (f));
+					model.LoadFiles (results);
 			}, null);
 		}
 	}
