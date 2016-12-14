@@ -14,7 +14,6 @@ namespace Xamarin.Android.Tools.ClassBrowser
 	{
 		public void LoadFiles (string [] files)
 		{
-			Api = new JavaApi ();
 			foreach (var file in files) {
 				var identifer = GetFileId (file);
 				switch (Path.GetExtension (file.ToLowerInvariant ())) {
@@ -171,7 +170,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				ApiSetUpdated (this, EventArgs.Empty);
 		}
 
-		public JavaApi Api { get; private set; }
+		public JavaApi Api { get; private set; } = new JavaApi ();
 
 		string GetFileId (string file)
 		{

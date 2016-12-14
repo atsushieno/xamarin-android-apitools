@@ -54,36 +54,38 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			tree.Columns.Add ("Name", nameField);
 			tree.Columns.Add ("Source", sourceField);
 			model.ApiSetUpdated += (sender, e) => {
-				//treeModel.Clear ();
-				foreach (var pkg in model.Api.Packages.OrderBy (p => p.Name)) {
-					Application.InvokeAsync (() => {
-						var pkgNode = treeModel.AddNode ();
-						pkgNode.SetValue (nameField, pkg.Name);
-						foreach (var type in pkg.Types) {
-							var typeNode = pkgNode.AddChild ();
-							typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
-							foreach (var fld in type.Members.OfType<JavaField> ()) {
-								var fieldNode = typeNode.AddChild ();
-								fieldNode.SetValue (nameField, "[F]" + fld.Name);
-								fieldNode.SetValue (sourceField, fld.GetExtension<SourceIdentifier> ()?.SourceUri);
-								fieldNode.MoveToParent ();
+				Application.InvokeAsync (() => {
+					treeModel.Clear ();
+					foreach (var pkg in model.Api.Packages.OrderBy (p => p.Name)) {
+						Application.InvokeAsync (() => {
+							var pkgNode = treeModel.AddNode ();
+							pkgNode.SetValue (nameField, pkg.Name);
+							foreach (var type in pkg.Types) {
+								var typeNode = pkgNode.AddChild ();
+								typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
+								foreach (var fld in type.Members.OfType<JavaField> ()) {
+									var fieldNode = typeNode.AddChild ();
+									fieldNode.SetValue (nameField, "[F]" + fld.Name);
+									fieldNode.SetValue (sourceField, fld.GetExtension<SourceIdentifier> ()?.SourceUri);
+									fieldNode.MoveToParent ();
+								}
+								foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
+									var ctorNode = typeNode.AddChild ();
+									ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
+									ctorNode.SetValue (sourceField, ctor.GetExtension<SourceIdentifier> ()?.SourceUri);
+									ctorNode.MoveToParent ();
+								}
+								foreach (var method in type.Members.OfType<JavaMethod> ()) {
+									var methodNode = typeNode.AddChild ();
+									methodNode.SetValue (nameField, "[M]" + method.ToString ());
+									methodNode.SetValue (sourceField, method.GetExtension<SourceIdentifier> ()?.SourceUri);
+									methodNode.MoveToParent ();
+								}
+								typeNode.MoveToParent ();
 							}
-							foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
-								var ctorNode = typeNode.AddChild ();
-								ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
-								ctorNode.SetValue (sourceField, ctor.GetExtension<SourceIdentifier> ()?.SourceUri);
-								ctorNode.MoveToParent ();
-							}
-							foreach (var method in type.Members.OfType<JavaMethod> ()) {
-								var methodNode = typeNode.AddChild ();
-								methodNode.SetValue (nameField, "[M]" + method.ToString ());
-								methodNode.SetValue (sourceField, method.GetExtension<SourceIdentifier> ()?.SourceUri);
-								methodNode.MoveToParent ();
-							}
-							typeNode.MoveToParent ();
-						}
-					});
-				}
+						});
+					}
+				});
 			};
 
 			vpaned.Panel2.Content = tree;
