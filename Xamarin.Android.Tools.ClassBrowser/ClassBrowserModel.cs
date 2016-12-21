@@ -12,7 +12,14 @@ namespace Xamarin.Android.Tools.ClassBrowser
 {
 	public class ClassBrowserModel
 	{
-		public void LoadFiles (string [] files)
+		internal void ClearApi ()
+		{
+			FileIds.Clear ();
+			Api.Packages.Clear ();
+			OnApiSetUpdated ();
+		}
+
+		public void LoadApiFromFiles (string [] files)
 		{
 			foreach (var file in files) {
 				var identifer = GetFileId (file);

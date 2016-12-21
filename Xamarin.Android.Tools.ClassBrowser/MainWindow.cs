@@ -13,14 +13,13 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 		public MainWindow ()
 		{
-			Width = 600;
-			Height = 500;
-			var vbox = new VBox ();
+			var vbox = new VBox () { WidthRequest = 600, HeightRequest = 500 };
 
 			var menu = new Menu ();
 			var commands = new List<KeyValuePair<string,List<KeyValuePair<Command, Action>>>> ();
 			var fileCommands = new List<KeyValuePair<Command, Action>> ();
 			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("_Open"), () => OpenJavaLibraries ()));
+			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("Clear"), () => ClearJavaLibraries ()));
 			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("_Exit"), () => CloseApplicationWindow ()));
 			commands.Add (new KeyValuePair<string, List<KeyValuePair<Command, Action>>> ("_File", fileCommands));
 
@@ -37,16 +36,22 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			var vpaned = new VPaned ();
 
-			var idList = new ListBox () { ExpandHorizontal = true };
+			var idList = new ListBox () { ExpandHorizontal = true, HeightRequest = 50 };
+			idList.Items.Add ("-- [ID]: [filename] --");
 			model.ApiSetUpdated += (sender, e) => {
-				idList.Items.Clear ();
-				foreach (var p in model.FileIds)
-					idList.Items.Add (string.Format ("{0}: {1}", p.Value, p.Key));
+				Application.InvokeAsync (() => {
+					idList.Items.Clear ();
+					idList.Items.Add ("-- ID: file --");
+					foreach (var p in model.FileIds)
+						idList.Items.Add (string.Format ("{0}: {1}", p.Value, p.Key));
+				});
 			};
+			vpaned.Panel1.Resize = true;
+			vpaned.Panel1.Shrink = true;
 			vpaned.Panel1.Content = idList;
 
 
-			var tree = new TreeView () { ExpandVertical = true, ExpandHorizontal = true };
+			var tree = new TreeView () { ExpandVertical = true, ExpandHorizontal = true, HeightRequest = 300 };
 			var nameField = new DataField<string> ();
 			var sourceField = new DataField<string> ();
 			var treeModel = new TreeStore (nameField, sourceField);
@@ -63,6 +68,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 							foreach (var type in pkg.Types) {
 								var typeNode = pkgNode.AddChild ();
 								typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
+								typeNode.SetValue (sourceField, type.GetExtension<SourceIdentifier> ()?.SourceUri);
 								foreach (var fld in type.Members.OfType<JavaField> ()) {
 									var fieldNode = typeNode.AddChild ();
 									fieldNode.SetValue (nameField, "[F]" + fld.Name);
@@ -100,6 +106,11 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			Close ();
 		}
 
+		void ClearJavaLibraries ()
+		{
+			model.ClearApi ();
+		}
+
 		void OpenJavaLibraries ()
 		{
 			string [] results = null;
@@ -118,7 +129,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			}
 			ThreadPool.QueueUserWorkItem ((state) => {
 				if (results != null)
-					model.LoadFiles (results);
+					model.LoadApiFromFiles (results);
 			}, null);
 		}
 	}
