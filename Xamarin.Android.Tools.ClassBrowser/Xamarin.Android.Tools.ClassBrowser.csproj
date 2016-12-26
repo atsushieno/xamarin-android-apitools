@@ -49,6 +49,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="ClassBrowserModel.cs" />
+    <Compile Include="JavaApiExtensions.cs" />
+    <Compile Include="SourceIdentifier.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\external\xwt\Xwt\Xwt.csproj">

@@ -100,12 +100,29 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					yield return tt;
 		}
 
+		void FillSourceIdentifier (JavaApi api, string sourceIdentifier)
+		{
+			var ident = new SourceIdentifier (sourceIdentifier);
+			Action<JavaMember> processMember = (member) => {
+				member.SetExtension (ident);
+			};
+			Action<JavaType> processType = (type) => {
+				type.SetExtension (ident);
+				foreach (var member in type.Members)
+					processMember (member);
+			};
+			Action<JavaPackage> processPackage = (pkg) => {
+				pkg.SetExtension (ident);
+				foreach (var type in pkg.Types)
+					processType (type);
+			};
+
+			foreach (var pkg in api.Packages)
+				processPackage (pkg);
+		}
+
 		void LoadDll (string file, string sourceIdentifier = null)
 		{
-			sourceIdentifier = sourceIdentifier ?? file;
-			var ident = new SourceIdentifier (sourceIdentifier);
-			Action<IJavaInfoItem> addIdent = (obj) => obj.SetExtension (ident);;
-			Api.NewExtensibleCreated += addIdent;
 			foreach (var ta in AssemblyDefinition.ReadAssembly (file).Modules.SelectMany (m => m.Types.SelectMany (t => FlattenTypeHierarchy (t)))
 			         .Where (ta => !ta.Name.EndsWith ("Invoker", StringComparison.Ordinal) && !ta.Name.EndsWith ("Implementor", StringComparison.Ordinal))
 			         .Select (t => new Tuple<TypeDefinition,CustomAttribute> (t, GetRegisteredAttribute (t)))
@@ -137,7 +154,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					type.Members.Add (m);
 				}
 			}
-			Api.NewExtensibleCreated -= addIdent;
+			FillSourceIdentifier (Api, sourceIdentifier ?? file);
 		}
 
 		IEnumerable<MethodDefinition> GetAllMethods (TypeDefinition td)
@@ -159,14 +176,8 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 		void LoadXml (XmlReader reader, string sourceFile)
 		{
-			sourceFile = sourceFile ?? reader.BaseURI;
-			var ident = new SourceIdentifier (sourceFile);
-			Action<IJavaInfoItem> setSource = (obj) => obj.SetExtension (ident);
-			Api.NewExtensibleCreated += setSource;
-
 			Api.Load (reader, false);
-
-			Api.NewExtensibleCreated -= setSource;
+			FillSourceIdentifier (Api, sourceFile);
 		}
 
 		public event EventHandler ApiSetUpdated;
