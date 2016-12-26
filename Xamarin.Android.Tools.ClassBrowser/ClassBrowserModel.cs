@@ -12,49 +12,56 @@ namespace Xamarin.Android.Tools.ClassBrowser
 {
 	public class ClassBrowserModel
 	{
-		public void LoadFiles (string [] files)
+		internal void ClearApi ()
 		{
-			Api = new JavaApi ();
-			foreach (var file in files) {
-				switch (Path.GetExtension (file.ToLowerInvariant ())) {
-				case ".aar":
-					LoadAar (file);
-					break;
-				case ".jar":
-					LoadJar (file);
-					break;
-				case ".dll":
-					LoadDll (file);
-					break;
-				default: // load as XML
-					LoadXml (file);
-					break;
-				}
-			}
-			//libs = files.Select (file => new ClassPath (file)).ToList ();
+			FileIds.Clear ();
+			Api.Packages.Clear ();
 			OnApiSetUpdated ();
 		}
 
-		void LoadAar (string file)
+		public void LoadApiFromFiles (string [] files)
 		{
+			foreach (var file in files) {
+				var identifer = GetFileId (file);
+				switch (Path.GetExtension (file.ToLowerInvariant ())) {
+				case ".aar":
+					LoadAar (file, identifer);
+					break;
+				case ".jar":
+					LoadJar (file, identifer);
+					break;
+				case ".dll":
+					LoadDll (file, identifer);
+					break;
+				default: // load as XML
+					LoadXml (file, identifer);
+					break;
+				}
+			}
+			OnApiSetUpdated ();
+		}
+
+		void LoadAar (string file, string sourceIdentifier = null)
+		{
+			sourceIdentifier = sourceIdentifier ?? file;
 			using (var zip = Xamarin.Tools.Zip.ZipArchive.Open (file, FileMode.Open)) {
 				foreach (var jar in zip.AsEnumerable ()
 					 .Where (e => Path.GetExtension (e.FullName).Equals (".jar", StringComparison.OrdinalIgnoreCase))) {
-					var ms = new MemoryStream ();
 					string jarfile = jar.Extract ();
-					LoadJar (jarfile);
+					LoadJar (jarfile, file);
 					File.Delete (jarfile);
 				}
 			}
 		}
 
-		void LoadJar (string file)
+		void LoadJar (string file, string sourceIdentifier = null)
 		{
+			sourceIdentifier = sourceIdentifier ?? file;
 			var tw = new StringWriter ();
 			new ClassPath (file).SaveXmlDescription (tw);
 			tw.Close ();
 			using (var xr = XmlReader.Create (new StringReader (tw.ToString ())))
-				LoadXml (xr);
+				LoadXml (xr, sourceIdentifier);
 		}
 
 		class RegisterAttributeInfo
@@ -93,7 +100,28 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					yield return tt;
 		}
 
-		void LoadDll (string file)
+		void FillSourceIdentifier (JavaApi api, string sourceIdentifier)
+		{
+			var ident = new SourceIdentifier (sourceIdentifier);
+			Action<JavaMember> processMember = (member) => {
+				member.SetExtension (ident);
+			};
+			Action<JavaType> processType = (type) => {
+				type.SetExtension (ident);
+				foreach (var member in type.Members)
+					processMember (member);
+			};
+			Action<JavaPackage> processPackage = (pkg) => {
+				pkg.SetExtension (ident);
+				foreach (var type in pkg.Types)
+					processType (type);
+			};
+
+			foreach (var pkg in api.Packages)
+				processPackage (pkg);
+		}
+
+		void LoadDll (string file, string sourceIdentifier = null)
 		{
 			foreach (var ta in AssemblyDefinition.ReadAssembly (file).Modules.SelectMany (m => m.Types.SelectMany (t => FlattenTypeHierarchy (t)))
 			         .Where (ta => !ta.Name.EndsWith ("Invoker", StringComparison.Ordinal) && !ta.Name.EndsWith ("Implementor", StringComparison.Ordinal))
@@ -106,21 +134,27 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					Api.Packages.Add (pkg = new JavaPackage (Api) { Name = tatt.Package });
 				var type = td.IsInterface ? (JavaType) new JavaInterface (pkg) : new JavaClass (pkg);
 				type.Name = tatt.Name;
+				type.SetExtension (td);
 				pkg.Types.Add (type);
 				foreach (var fa in td.Fields
 				         .Select (f => new Tuple<FieldDefinition, CustomAttribute> (f, GetRegisteredAttribute (f)))
 				         .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (fa.Item2);
-					type.Members.Add (new JavaField (type) { Name = matt.Name });
+					var f = new JavaField (type) { Name = matt.Name };
+					f.SetExtension (fa.Item1);
+					type.Members.Add (f);
 				}
 				foreach (var ma in GetAllMethods (td)
 				         .Where (m => m != null)
 				         .Select (m => new Tuple<MethodDefinition, CustomAttribute> (m, GetRegisteredAttribute (m)))
 				         .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (ma.Item2);
-					type.Members.Add (new JavaMethod (type) { Name = matt.Name });
+					var m = new JavaMethod (type) { Name = matt.Name };
+					m.SetExtension (ma.Item1);
+					type.Members.Add (m);
 				}
 			}
+			FillSourceIdentifier (Api, sourceIdentifier ?? file);
 		}
 
 		IEnumerable<MethodDefinition> GetAllMethods (TypeDefinition td)
@@ -133,15 +167,17 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				yield return m;
 		}
 
-		void LoadXml (string file)
+		void LoadXml (string file, string sourceIdentifier = null)
 		{
+			sourceIdentifier = sourceIdentifier ?? file;
 			using (var xr = XmlReader.Create (file))
-				LoadXml (xr);
+				LoadXml (xr, sourceIdentifier);
 		}
 
-		void LoadXml (XmlReader reader)
+		void LoadXml (XmlReader reader, string sourceFile)
 		{
 			Api.Load (reader, false);
+			FillSourceIdentifier (Api, sourceFile);
 		}
 
 		public event EventHandler ApiSetUpdated;
@@ -152,6 +188,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				ApiSetUpdated (this, EventArgs.Empty);
 		}
 
-		public JavaApi Api { get; private set; }
+		public JavaApi Api { get; private set; } = new JavaApi ();
+
+		string GetFileId (string file)
+		{
+			string id;
+			if (!FileIds.TryGetValue (file, out id)) {
+				id = FileIds.Count.ToString ();
+				FileIds [file] = id;
+			}
+			return id;
+		}
+
+		public IDictionary<string, string> FileIds { get; private set; } = new Dictionary<string, string> ();
 	}
 }

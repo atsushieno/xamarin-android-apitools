@@ -13,13 +13,13 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 		public MainWindow ()
 		{
-			Width = 600;
-			Height = 500;
-			var vbox = new VBox ();
+			var vbox = new VBox () { WidthRequest = 600, HeightRequest = 500 };
+
 			var menu = new Menu ();
 			var commands = new List<KeyValuePair<string,List<KeyValuePair<Command, Action>>>> ();
 			var fileCommands = new List<KeyValuePair<Command, Action>> ();
 			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("_Open"), () => OpenJavaLibraries ()));
+			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("Clear"), () => ClearJavaLibraries ()));
 			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("_Exit"), () => CloseApplicationWindow ()));
 			commands.Add (new KeyValuePair<string, List<KeyValuePair<Command, Action>>> ("_File", fileCommands));
 
@@ -34,48 +34,81 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			}
 			this.MainMenu = menu;
 
-			var tree = new TreeView ();
+			var vpaned = new VPaned ();
+
+			var idList = new ListBox () { ExpandHorizontal = true, HeightRequest = 50 };
+			idList.Items.Add ("-- [ID]: [filename] --");
+			model.ApiSetUpdated += (sender, e) => {
+				Application.InvokeAsync (() => {
+					idList.Items.Clear ();
+					idList.Items.Add ("-- ID: file --");
+					foreach (var p in model.FileIds)
+						idList.Items.Add (string.Format ("{0}: {1}", p.Value, p.Key));
+				});
+			};
+			vpaned.Panel1.Resize = true;
+			vpaned.Panel1.Shrink = true;
+			vpaned.Panel1.Content = idList;
+
+
+			var tree = new TreeView () { ExpandVertical = true, ExpandHorizontal = true, HeightRequest = 300 };
 			var nameField = new DataField<string> ();
-			var treeModel = new TreeStore (nameField);
+			var sourceField = new DataField<string> ();
+			var treeModel = new TreeStore (nameField, sourceField);
 			tree.DataSource = treeModel;
 			tree.Columns.Add ("Name", nameField);
+			tree.Columns.Add ("Source", sourceField);
 			model.ApiSetUpdated += (sender, e) => {
-				treeModel.Clear ();
-				foreach (var pkg in model.Api.Packages.OrderBy (p => p.Name)) {
-					Application.InvokeAsync (() => {
-						var pkgNode = treeModel.AddNode ();
-						pkgNode.SetValue (nameField, pkg.Name);
-						foreach (var type in pkg.Types) {
-							var typeNode = pkgNode.AddChild ();
-							typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
-							foreach (var fld in type.Members.OfType<JavaField> ()) {
-								var fieldNode = typeNode.AddChild ();
-								fieldNode.SetValue (nameField, "[F]" + fld.Name);
-								fieldNode.MoveToParent ();
+				Application.InvokeAsync (() => {
+					treeModel.Clear ();
+					foreach (var pkg in model.Api.Packages.OrderBy (p => p.Name)) {
+						Application.InvokeAsync (() => {
+							var pkgNode = treeModel.AddNode ();
+							pkgNode.SetValue (nameField, pkg.Name);
+							foreach (var type in pkg.Types) {
+								var typeNode = pkgNode.AddChild ();
+								typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
+								typeNode.SetValue (sourceField, type.GetExtension<SourceIdentifier> ()?.SourceUri);
+								foreach (var fld in type.Members.OfType<JavaField> ()) {
+									var fieldNode = typeNode.AddChild ();
+									fieldNode.SetValue (nameField, "[F]" + fld.Name);
+									fieldNode.SetValue (sourceField, fld.GetExtension<SourceIdentifier> ()?.SourceUri);
+									fieldNode.MoveToParent ();
+								}
+								foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
+									var ctorNode = typeNode.AddChild ();
+									ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
+									ctorNode.SetValue (sourceField, ctor.GetExtension<SourceIdentifier> ()?.SourceUri);
+									ctorNode.MoveToParent ();
+								}
+								foreach (var method in type.Members.OfType<JavaMethod> ()) {
+									var methodNode = typeNode.AddChild ();
+									methodNode.SetValue (nameField, "[M]" + method.ToString ());
+									methodNode.SetValue (sourceField, method.GetExtension<SourceIdentifier> ()?.SourceUri);
+									methodNode.MoveToParent ();
+								}
+								typeNode.MoveToParent ();
 							}
-							foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
-								var ctorNode = typeNode.AddChild ();
-								ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
-								ctorNode.MoveToParent ();
-							}
-							foreach (var method in type.Members.OfType<JavaMethod> ()) {
-								var methodNode = typeNode.AddChild ();
-								methodNode.SetValue (nameField, "[M]" + method.ToString ());
-								methodNode.MoveToParent ();
-							}
-							typeNode.MoveToParent ();
-						}
-					});
-				}
+						});
+					}
+				});
 			};
 
-			vbox.PackStart (tree, true, true);
+			vpaned.Panel2.Content = tree;
+
+			vbox.PackStart (vpaned, true, true);
+
 			Content = vbox;
 		}
 
 		void CloseApplicationWindow ()
 		{
 			Close ();
+		}
+
+		void ClearJavaLibraries ()
+		{
+			model.ClearApi ();
 		}
 
 		void OpenJavaLibraries ()
@@ -85,18 +118,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				Title = "Select .jar file to load",
 				Multiselect = true,
 			}) {
-				dlg.Filters.Add (new FileDialogFilter ("jar files", "*.jar"));
-				// TODO: aar support would be fancy
+				dlg.Filters.Add (new FileDialogFilter ("Any file", "*"));
+				dlg.Filters.Add (new FileDialogFilter ("Jar files", "*.jar"));
+				dlg.Filters.Add (new FileDialogFilter ("Aar files", "*.aar"));
 				dlg.Filters.Add (new FileDialogFilter ("DLL files", "*.dll"));
 				dlg.Filters.Add (new FileDialogFilter ("XML files", "*.xml"));
-				dlg.Filters.Add (new FileDialogFilter ("Any file", "*"));
 
 				dlg.Run ();
 				results = dlg.FileNames;
 			}
 			ThreadPool.QueueUserWorkItem ((state) => {
 				if (results != null)
-					model.LoadFiles (results);
+					model.LoadApiFromFiles (results);
 			}, null);
 		}
 	}
