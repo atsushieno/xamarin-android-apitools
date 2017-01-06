@@ -263,6 +263,13 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				return Directory.GetDirectories (Path.Combine (AndroidSdkPath, "platforms")).SelectMany (d => Directory.GetFiles (d, "android.jar"));
 			}
 		}
+		public IEnumerable<string> AndroidSdkExtraAars {
+			get {
+				if (string.IsNullOrEmpty (AndroidSdkPath) || !Directory.Exists (AndroidSdkPath))
+					return new string [0];
+				return Directory.GetDirectories (Path.Combine (AndroidSdkPath, "extras")).SelectMany (d => Directory.GetFiles (d, "*.aar", SearchOption.AllDirectories));
+			}
+		}
 		public IEnumerable<string> XamarinAndroidLibraries {
 			get {
 				if (string.IsNullOrEmpty (XamarinAndroidSdkPath) || !Directory.Exists (XamarinAndroidSdkPath))
