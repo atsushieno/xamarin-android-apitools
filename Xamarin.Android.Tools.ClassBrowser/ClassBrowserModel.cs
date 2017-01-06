@@ -12,35 +12,6 @@ namespace Xamarin.Android.Tools.ClassBrowser
 {
 	public class ClassBrowserModel
 	{
-		internal void ClearApi ()
-		{
-			FileIds.Clear ();
-			Api.Packages.Clear ();
-			OnApiSetUpdated ();
-		}
-
-		public void LoadApiFromFiles (string [] files)
-		{
-			foreach (var file in files) {
-				var identifer = GetFileId (file);
-				switch (Path.GetExtension (file.ToLowerInvariant ())) {
-				case ".aar":
-					LoadAar (file, identifer);
-					break;
-				case ".jar":
-					LoadJar (file, identifer);
-					break;
-				case ".dll":
-					LoadDll (file, identifer);
-					break;
-				default: // load as XML
-					LoadXml (file, identifer);
-					break;
-				}
-			}
-			OnApiSetUpdated ();
-		}
-
 		void LoadAar (string file, string sourceIdentifier = null)
 		{
 			sourceIdentifier = sourceIdentifier ?? file;
@@ -78,12 +49,12 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			var ret = new RegisterAttributeInfo ();
 			var name = a.ConstructorArguments [0].Value.ToString ();
 			var idx = isType ? name.LastIndexOf ('/') : -1;
-			ret.Package = idx< 0 ? string.Empty : name.Substring (0, idx).Replace ('/', '.');
+			ret.Package = idx < 0 ? string.Empty : name.Substring (0, idx).Replace ('/', '.');
 			ret.Name = idx < 0 ? name : name.Substring (ret.Package.Length + 1);
 			if (a.ConstructorArguments.Count () > 1)
 				ret.JniSignature = a.ConstructorArguments [1].Value.ToString ();
 			var since = a.HasProperties ? a.Properties.FirstOrDefault (p => p.Name == "ApiSince") : default (CustomAttributeNamedArgument);
-			ret.ApiSince = since.Argument.Value != null ? (int) since.Argument.Value : 0;
+			ret.ApiSince = since.Argument.Value != null ? (int)since.Argument.Value : 0;
 			return ret;
 		}
 
@@ -104,15 +75,21 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		{
 			var ident = new SourceIdentifier (sourceIdentifier);
 			Action<JavaMember> processMember = (member) => {
-				member.SetExtension (ident);
+				var existing = member.GetExtension<SourceIdentifier> ();
+				if (existing == null)
+					member.SetExtension (ident);
 			};
 			Action<JavaType> processType = (type) => {
-				type.SetExtension (ident);
+				var existing = type.GetExtension<SourceIdentifier> ();
+				if (existing == null)
+					type.SetExtension (ident);
 				foreach (var member in type.Members)
 					processMember (member);
 			};
 			Action<JavaPackage> processPackage = (pkg) => {
-				pkg.SetExtension (ident);
+				var existing = pkg.GetExtension<SourceIdentifier> ();
+				if (existing == null)
+					pkg.SetExtension (ident);
 				foreach (var type in pkg.Types)
 					processType (type);
 			};
@@ -124,30 +101,30 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		void LoadDll (string file, string sourceIdentifier = null)
 		{
 			foreach (var ta in AssemblyDefinition.ReadAssembly (file).Modules.SelectMany (m => m.Types.SelectMany (t => FlattenTypeHierarchy (t)))
-			         .Where (ta => !ta.Name.EndsWith ("Invoker", StringComparison.Ordinal) && !ta.Name.EndsWith ("Implementor", StringComparison.Ordinal))
-			         .Select (t => new Tuple<TypeDefinition,CustomAttribute> (t, GetRegisteredAttribute (t)))
-			         .Where (p => p.Item2 != null)) {
+				 .Where (ta => !ta.Name.EndsWith ("Invoker", StringComparison.Ordinal) && !ta.Name.EndsWith ("Implementor", StringComparison.Ordinal))
+				 .Select (t => new Tuple<TypeDefinition, CustomAttribute> (t, GetRegisteredAttribute (t)))
+				 .Where (p => p.Item2 != null)) {
 				var td = ta.Item1;
 				var tatt = PopulateRegisterAttributeInfo (ta.Item2, true);
 				var pkg = Api.Packages.FirstOrDefault (p => p.Name == tatt.Package);
 				if (pkg == null)
 					Api.Packages.Add (pkg = new JavaPackage (Api) { Name = tatt.Package });
-				var type = td.IsInterface ? (JavaType) new JavaInterface (pkg) : new JavaClass (pkg);
+				var type = td.IsInterface ? (JavaType)new JavaInterface (pkg) : new JavaClass (pkg);
 				type.Name = tatt.Name;
 				type.SetExtension (td);
 				pkg.Types.Add (type);
 				foreach (var fa in td.Fields
-				         .Select (f => new Tuple<FieldDefinition, CustomAttribute> (f, GetRegisteredAttribute (f)))
-				         .Where (p => p.Item2 != null)) {
+					 .Select (f => new Tuple<FieldDefinition, CustomAttribute> (f, GetRegisteredAttribute (f)))
+					 .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (fa.Item2);
 					var f = new JavaField (type) { Name = matt.Name };
 					f.SetExtension (fa.Item1);
 					type.Members.Add (f);
 				}
 				foreach (var ma in GetAllMethods (td)
-				         .Where (m => m != null)
-				         .Select (m => new Tuple<MethodDefinition, CustomAttribute> (m, GetRegisteredAttribute (m)))
-				         .Where (p => p.Item2 != null)) {
+					 .Where (m => m != null)
+					 .Select (m => new Tuple<MethodDefinition, CustomAttribute> (m, GetRegisteredAttribute (m)))
+					 .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (ma.Item2);
 					var m = new JavaMethod (type) { Name = matt.Name };
 					m.SetExtension (ma.Item1);
@@ -180,6 +157,19 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			FillSourceIdentifier (Api, sourceFile);
 		}
 
+		string GetFileId (string file)
+		{
+			var i = LoadedApiInfos.FirstOrDefault (_ => _.ApiFullPath == file);
+			if (i == null) {
+				var id = LoadedApiInfos.Count.ToString ();
+				i = new LoadedApiInfo () { ApiFullPath = file, FileId = id, Selected = true };
+				LoadedApiInfos.Add (i);
+			}
+			return i.FileId;
+		}
+
+		#region Events
+
 		public event EventHandler ApiSetUpdated;
 
 		void OnApiSetUpdated ()
@@ -188,18 +178,97 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				ApiSetUpdated (this, EventArgs.Empty);
 		}
 
-		public JavaApi Api { get; private set; } = new JavaApi ();
+		#endregion
 
-		string GetFileId (string file)
+		#region Public API manipulation
+
+		public void ClearApi ()
 		{
-			string id;
-			if (!FileIds.TryGetValue (file, out id)) {
-				id = FileIds.Count.ToString ();
-				FileIds [file] = id;
-			}
-			return id;
+			LoadedApiInfos.Clear ();
+			ApiSet.Clear ();
+			ApiSet.Add (new JavaApi ());
+			OnApiSetUpdated ();
 		}
 
-		public IDictionary<string, string> FileIds { get; private set; } = new Dictionary<string, string> ();
+		public JavaApi Api {
+			get {
+				return ApiSet.Last ();
+			}
+		}
+
+		public IList<JavaApi> ApiSet { get; private set; }
+
+		public ClassBrowserModel ()
+		{
+			ApiSet = new List<JavaApi> ();
+			ApiSet.Add (new JavaApi ());
+		}
+
+		public IList<LoadedApiInfo> LoadedApiInfos { get; private set; } = new List<LoadedApiInfo> ();
+
+		public void LoadApiFromFiles (string [] files)
+		{
+			if (Api.Packages.Any ())
+				ApiSet.Add (new JavaApi ());
+			
+			foreach (var file in files) {
+				var identifer = GetFileId (file);
+				switch (Path.GetExtension (file.ToLowerInvariant ())) {
+				case ".aar":
+					LoadAar (file, identifer);
+					break;
+				case ".jar":
+					LoadJar (file, identifer);
+					break;
+				case ".dll":
+					LoadDll (file, identifer);
+					break;
+				default: // load as XML
+					LoadXml (file, identifer);
+					break;
+				}
+			}
+			OnApiSetUpdated ();
+		}
+
+		#endregion
+
+		#region Prefefined Files
+		public PredefinedLibraries PredefinedLibraries { get; private set; } = new PredefinedLibraries ();
+
+		#endregion
+	}
+
+	public class LoadedApiInfo
+	{
+		public bool Selected { get; set; }
+		public string ApiFullPath { get; set; }
+		public string FileId { get; set; }
+	}
+
+	public class PredefinedLibraries
+	{
+		public PredefinedLibraries ()
+		{
+			AndroidSdkPath = Environment.GetEnvironmentVariable ("ANDROID_SDK_PATH");
+			XamarinAndroidSdkPath = Environment.GetEnvironmentVariable ("MONO_ANDROID_PATH");
+		}
+		public string AndroidSdkPath { get; set; }
+		public string XamarinAndroidSdkPath { get; set; }
+
+		public IEnumerable<string> AndroidLibraries {
+			get {
+				if (string.IsNullOrEmpty (AndroidSdkPath) || !Directory.Exists (AndroidSdkPath))
+					return new string [0];
+				return Directory.GetDirectories (Path.Combine (AndroidSdkPath, "platforms")).SelectMany (d => Directory.GetFiles (d, "android.jar"));
+			}
+		}
+		public IEnumerable<string> XamarinAndroidLibraries {
+			get {
+				if (string.IsNullOrEmpty (XamarinAndroidSdkPath) || !Directory.Exists (XamarinAndroidSdkPath))
+					return new string [0];
+				return Directory.GetDirectories (Path.Combine (XamarinAndroidSdkPath, "lib", "xbuild-frameworks", "MonoAndroid")).SelectMany (d => Directory.GetFiles (d, "Mono.Android.dll"));
+			}
+		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using Xamarin.Android.Tools.ApiXmlAdjuster;
@@ -23,6 +24,15 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			fileCommands.Add (new KeyValuePair<Command, Action> (new Command ("_Exit"), () => CloseApplicationWindow ()));
 			commands.Add (new KeyValuePair<string, List<KeyValuePair<Command, Action>>> ("_File", fileCommands));
 
+			var quickLoads = new List<KeyValuePair<Command, Action>> ();
+			Func<string, KeyValuePair<Command, Action>> gen = (s) =>
+				new KeyValuePair<Command, Action> (new Command (Path.GetFileName (Path.GetDirectoryName (s)) + '/' + Path.GetFileName (s)), () => model.LoadApiFromFiles (new string [] { s }));
+			foreach (var s in model.PredefinedLibraries.AndroidLibraries)
+				quickLoads.Add (gen (s));
+			foreach (var s in model.PredefinedLibraries.XamarinAndroidLibraries)
+				quickLoads.Add (gen (s));
+			commands.Add (new KeyValuePair<string, List<KeyValuePair<Command, Action>>> ("_Quick Load", quickLoads));
+
 			foreach (var cl in commands) {
 				var submenu = new Menu ();
 				foreach (var item in cl.Value) {
@@ -36,14 +46,22 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			var vpaned = new VPaned ();
 
-			var idList = new ListBox () { ExpandHorizontal = true, HeightRequest = 50 };
-			idList.Items.Add ("-- [ID]: [filename] --");
+			var idList = new ListView () { ExpandHorizontal = true, HeightRequest = 50 };
+			var selectedField = new DataField<bool> ();
+			var idField = new DataField<string> ();
+			var fileField = new DataField<string> ();
+			var listModel = new ListStore (selectedField, idField, fileField);
+			idList.DataSource = listModel;
+			idList.Columns.Add (" ", selectedField);
+			idList.Columns.Add ("ID", idField);
+			idList.Columns.Add ("File", fileField);
+			foreach (var c in idList.Columns)
+				c.CanResize = true;
 			model.ApiSetUpdated += (sender, e) => {
 				Application.InvokeAsync (() => {
-					idList.Items.Clear ();
-					idList.Items.Add ("-- ID: file --");
-					foreach (var p in model.FileIds)
-						idList.Items.Add (string.Format ("{0}: {1}", p.Value, p.Key));
+					listModel.Clear ();
+					foreach (var i in model.LoadedApiInfos)
+						listModel.SetValues (listModel.AddRow (), selectedField, i.Selected, idField, i.FileId, fileField, i.ApiFullPath);
 				});
 			};
 			vpaned.Panel1.Resize = true;
@@ -58,6 +76,8 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			tree.DataSource = treeModel;
 			tree.Columns.Add ("Name", nameField);
 			tree.Columns.Add ("Source", sourceField);
+			foreach (var c in tree.Columns)
+				c.CanResize = true;
 			model.ApiSetUpdated += (sender, e) => {
 				Application.InvokeAsync (() => {
 					treeModel.Clear ();
@@ -124,8 +144,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				dlg.Filters.Add (new FileDialogFilter ("DLL files", "*.dll"));
 				dlg.Filters.Add (new FileDialogFilter ("XML files", "*.xml"));
 
-				dlg.Run ();
-				results = dlg.FileNames;
+				results = dlg.Run () ? dlg.FileNames : null;
 			}
 			ThreadPool.QueueUserWorkItem ((state) => {
 				if (results != null)
