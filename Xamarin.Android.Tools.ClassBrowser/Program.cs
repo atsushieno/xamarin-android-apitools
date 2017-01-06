@@ -8,9 +8,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		public static void Main (string [] args)
 		{
 			Application.Initialize ();
-			var mainWindow = new MainWindow () { Width = 100 };
-			mainWindow.Closed += (sender, e) => Application.Exit ();
-			mainWindow.Show ();
+			new MainWindow () { Width = 100 }.Show ();
 			Application.Run ();
 		}
 	}

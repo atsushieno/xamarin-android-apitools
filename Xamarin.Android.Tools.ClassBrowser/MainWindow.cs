@@ -50,18 +50,19 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			var extrasLibs = new MenuItem () { Label = "_Android SDK Extras", SubMenu = new Menu () };
 			Func<string, string> genMenuItemNameExtras = s => Path.Combine (Path.GetFileName (Path.GetDirectoryName (s)), Path.GetFileName (s));
-			var extraCategories = new string [] {
-				"android/m2repository/com/android/databinding",
-				"android/m2repository/com/android/support",
-				"google/m2repository/com/google/android",
-				"google/m2repository/com/google/firebase",
+			var extraCategories = new Dictionary<string,string> {
+				{"databinding", "android/m2repository/com/android/databinding"},
+				{"support library", "android/m2repository/com/android/support"},
+				{"google (play)", "google/m2repository/com/google/android"},
+				{"firebase", "google/m2repository/com/google/firebase"},
 			};
 			var extraSubdirs = model.PredefinedLibraries.AndroidSdkExtraAars.Select (s => Path.GetDirectoryName (Path.GetDirectoryName (s))).Distinct ().ToList ();
 			var populated = new List<string> ();
 			var extraAars = model.PredefinedLibraries.AndroidSdkExtraAars.ToList ();
-			foreach (var category in extraCategories.Select (s => s.Replace ('/', Path.DirectorySeparatorChar))) {
+			foreach (var categoryPair in extraCategories) {
+				var category = categoryPair.Value.Replace ('/', Path.DirectorySeparatorChar);
 				var catFullPath = Path.Combine (model.PredefinedLibraries.AndroidSdkPath, "extras", category);
-				var cmi = new MenuItem (category) { SubMenu = new Menu () };
+				var cmi = new MenuItem (categoryPair.Key) { SubMenu = new Menu () };
 				var matchSubdirs = extraSubdirs.Where (_ => _.StartsWith (catFullPath, StringComparison.OrdinalIgnoreCase)).ToList ();
 				foreach (var subdirFullPath in matchSubdirs) {
 					var subdir = subdirFullPath.Substring (catFullPath.Length + 1);
@@ -116,10 +117,12 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			var tree = new TreeView () { ExpandVertical = true, ExpandHorizontal = true, HeightRequest = 300 };
 			var nameField = new DataField<string> ();
+			var sourceField = new DataField<string> ();
 			var bindingField = new DataField<string> ();
-			var treeModel = new TreeStore (nameField, bindingField);
+			var treeModel = new TreeStore (nameField, sourceField, bindingField);
 			tree.DataSource = treeModel;
 			tree.Columns.Add ("Name", nameField);
+			tree.Columns.Add ("Source", sourceField);
 			tree.Columns.Add ("Binding", bindingField);
 			foreach (var c in tree.Columns)
 				c.CanResize = true;
@@ -133,22 +136,26 @@ namespace Xamarin.Android.Tools.ClassBrowser
 							foreach (var type in pkg.Types) {
 								var typeNode = pkgNode.AddChild ();
 								typeNode.SetValue (nameField, (type is JavaInterface ? "[IF]" : "[CLS]") + type.Name);
+								typeNode.SetValue (sourceField, type.GetExtension<SourceIdentifier> ()?.SourceUri);
 								typeNode.SetValue (bindingField, type.GetExtension<TypeDefinition> ()?.FullName);
 								foreach (var fld in type.Members.OfType<JavaField> ()) {
 									var fieldNode = typeNode.AddChild ();
-									fieldNode.SetValue (nameField, "[F]" + fld.Name);
+									fieldNode.SetValue (nameField, fld.ToString ());
+									fieldNode.SetValue (sourceField, fld.GetExtension<SourceIdentifier> ()?.SourceUri);
 									fieldNode.SetValue (bindingField, fld.GetExtension<PropertyDefinition> ()?.Name ?? fld.GetExtension<FieldDefinition> ()?.Name);
 									fieldNode.MoveToParent ();
 								}
 								foreach (var ctor in type.Members.OfType<JavaConstructor> ()) {
 									var ctorNode = typeNode.AddChild ();
-									ctorNode.SetValue (nameField, "[C]" + ctor.ToString ());
+									ctorNode.SetValue (nameField, ctor.ToString ());
+									ctorNode.SetValue (sourceField, ctor.GetExtension<SourceIdentifier> ()?.SourceUri);
 									ctorNode.SetValue (bindingField, ctor.GetExtension<MethodDefinition> ()?.ToString ());
 									ctorNode.MoveToParent ();
 								}
 								foreach (var method in type.Members.OfType<JavaMethod> ()) {
 									var methodNode = typeNode.AddChild ();
-									methodNode.SetValue (nameField, "[M]" + method.ToString ());
+									methodNode.SetValue (nameField, method.ToString ());
+									methodNode.SetValue (sourceField, method.GetExtension<SourceIdentifier> ()?.SourceUri);
 									methodNode.SetValue (bindingField, method.GetExtension<MethodDefinition> ()?.ToString ());
 									methodNode.MoveToParent ();
 								}
@@ -164,6 +171,8 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			vbox.PackStart (vpaned, true, true);
 
 			Content = vbox;
+
+			this.Closed += (sender, e) => Application.Exit ();
 		}
 
 		void CloseApplicationWindow ()
