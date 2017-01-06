@@ -51,6 +51,7 @@
     <Compile Include="ClassBrowserModel.cs" />
     <Compile Include="JavaApiExtensions.cs" />
     <Compile Include="SourceIdentifier.cs" />
+    <Compile Include="JavaApiComparer.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\external\xwt\Xwt\Xwt.csproj">

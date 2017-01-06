@@ -47,7 +47,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 		RegisterAttributeInfo PopulateRegisterAttributeInfo (CustomAttribute a, bool isType = false)
 		{
 			var ret = new RegisterAttributeInfo ();
-			var name = a.ConstructorArguments [0].Value.ToString ();
+			var name = a.ConstructorArguments [0].Value.ToString ().Replace ('$', '.');
 			var idx = isType ? name.LastIndexOf ('/') : -1;
 			ret.Package = idx < 0 ? string.Empty : name.Substring (0, idx).Replace ('/', '.');
 			ret.Name = idx < 0 ? name : name.Substring (ret.Package.Length + 1);

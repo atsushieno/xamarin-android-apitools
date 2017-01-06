@@ -15,7 +15,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 		public MainWindow ()
 		{
-			var vbox = new VBox () { WidthRequest = 600, HeightRequest = 500 };
+			var vbox = new VBox () { WidthRequest = 800, HeightRequest = 800 };
 
 			var menu = new Menu ();
 			var commands = new List<KeyValuePair<string,List<KeyValuePair<Command, Action>>>> ();
@@ -168,7 +168,18 @@ namespace Xamarin.Android.Tools.ClassBrowser
 
 			vpaned.Panel2.Content = tree;
 
+			var buttonCompare = new Button ("Compare");
+			var textReport = new MarkdownView () { HeightRequest = 200, ExpandHorizontal = true };
+			buttonCompare.Clicked += (sender, e) => {
+				string reports = "";
+				if (model.ApiSet.Count > 1)
+					foreach (var report in new JavaApiComparer ().Diff (model.ApiSet.ElementAt (model.ApiSet.Count - 2), model.Api))
+						reports += "- " + report + "\n";
+				textReport.LoadText (reports, new Xwt.Formats.MarkdownTextFormat ());
+			};
+			vbox.PackStart (buttonCompare);
 			vbox.PackStart (vpaned, true, true);
+			vbox.PackEnd (new ScrollView () { ExpandHorizontal = true, Content = textReport });
 
 			Content = vbox;
 
