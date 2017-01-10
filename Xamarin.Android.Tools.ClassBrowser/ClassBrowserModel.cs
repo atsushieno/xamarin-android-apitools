@@ -4,7 +4,6 @@ using System.Linq;
 using Xamarin.Android.Tools.Bytecode;
 using Xamarin.Android.Tools.ApiXmlAdjuster;
 using System.IO;
-using System.IO.Compression;
 using System.Xml;
 using Mono.Cecil;
 
@@ -109,7 +108,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				var pkg = Api.Packages.FirstOrDefault (p => p.Name == tatt.Package);
 				if (pkg == null)
 					Api.Packages.Add (pkg = new JavaPackage (Api) { Name = tatt.Package });
-				var type = td.IsInterface ? (JavaType)new JavaInterface (pkg) : new JavaClass (pkg);
+				var type = td.IsInterface ? (JavaType) new JavaInterface (pkg) : new JavaClass (pkg);
 				type.Name = tatt.Name;
 				type.SetExtension (td);
 				pkg.Types.Add (type);
@@ -117,7 +116,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					 .Select (f => new Tuple<FieldDefinition, CustomAttribute> (f, GetRegisteredAttribute (f)))
 					 .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (fa.Item2);
-					var f = new JavaField (type) { Name = matt.Name };
+					var f = new JavaField (type) { Name = matt.Name, Static = fa.Item1.IsStatic, Final = fa.Item1.HasConstant };
 					f.SetExtension (fa.Item1);
 					type.Members.Add (f);
 				}
@@ -126,12 +125,56 @@ namespace Xamarin.Android.Tools.ClassBrowser
 					 .Select (m => new Tuple<MethodDefinition, CustomAttribute> (m, GetRegisteredAttribute (m)))
 					 .Where (p => p.Item2 != null)) {
 					var matt = PopulateRegisterAttributeInfo (ma.Item2);
-					var m = new JavaMethod (type) { Name = matt.Name };
+					var m = new JavaMethod (type) { Name = matt.Name, Abstract = ma.Item1.IsAbstract, Static = ma.Item1.IsStatic  };
+					var jniParameters = matt.JniSignature.Substring (0, matt.JniSignature.IndexOf (')')).Substring (1);
+					m.Return = ParseJniParameters (matt.JniSignature.Substring (matt.JniSignature.IndexOf (')') + 1)).First ();
+					m.Parameters = ParseJniParameters (jniParameters)
+						.Zip (ma.Item1.Parameters, (s, mp) => new { Type = s, ManagedParameter = mp })
+						.Select (_ => new JavaParameter (m) { Name = _.ManagedParameter.Name, Type = _.Type })
+						.ToArray ();
 					m.SetExtension (ma.Item1);
 					type.Members.Add (m);
 				}
 			}
 			FillSourceIdentifier (Api, sourceIdentifier ?? file);
+		}
+
+		IEnumerable<string> ParseJniParameters (string jni)
+		{
+			int idx = 0;
+			while (idx < jni.Length)
+				yield return ParseJniParameter (jni, ref idx);
+		}
+
+		string ParseJniParameter (string jni, ref int pos)
+		{
+			switch (jni [pos++]) {
+			case 'Z':
+				return "bool";
+			case 'B':
+				return "byte";
+			case 'C':
+				return "char";
+			case 'S':
+				return "short";
+			case 'I':
+				return "int";
+			case 'J':
+				return "long";
+			case 'F':
+				return "float";
+			case 'D':
+				return "double";
+			case 'V':
+				return "void";
+			case '[':
+				return ParseJniParameter (jni, ref pos) + "[]";
+			case 'L':
+				var ret = jni.Substring (pos, jni.IndexOf (';', pos) - pos).Replace ('/', '.');
+				pos += ret.Length + 1;
+				return ret;
+			}
+			throw new Exception ($"Unexpected JNI description: {jni} ({jni[pos - 1]})");
 		}
 
 		IEnumerable<MethodDefinition> GetAllMethods (TypeDefinition td)

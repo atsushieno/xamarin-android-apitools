@@ -172,9 +172,11 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			var textReport = new MarkdownView () { HeightRequest = 200, ExpandHorizontal = true };
 			buttonCompare.Clicked += (sender, e) => {
 				string reports = "";
-				if (model.ApiSet.Count > 1)
-					foreach (var report in new JavaApiComparer ().Diff (model.ApiSet.ElementAt (model.ApiSet.Count - 2), model.Api))
-						reports += "- " + report + "\n";
+				if (model.ApiSet.Count > 1) {
+					var refApi = model.ApiSet.ElementAt (model.ApiSet.Count - 2);
+					foreach (var report in new JavaApiComparer () { IgnoreSystemObjectOverrides = true }.Compare (refApi, model.Api))
+						reports += "- " + report.Message + "\n";
+				}
 				textReport.LoadText (reports, new Xwt.Formats.MarkdownTextFormat ());
 			};
 			vbox.PackStart (buttonCompare);

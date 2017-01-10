@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Xamarin.Android.Tools.ApiXmlAdjuster;
 
 namespace Xamarin.Android.Tools.ClassBrowser
 {
