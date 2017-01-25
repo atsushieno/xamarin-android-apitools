@@ -6,11 +6,49 @@ using Xamarin.Android.Tools.ApiXmlAdjuster;
 using System.IO;
 using System.Xml;
 using Mono.Cecil;
+using System.Diagnostics;
 
 namespace Xamarin.Android.Tools.ClassBrowser
 {
 	public class ClassBrowserModel
 	{
+		void LoadApk (string file, string sourceIdentifier = null)
+		{
+			sourceIdentifier = sourceIdentifier ?? file;
+			var dir = Path.Combine (Path.GetTempPath (), Guid.NewGuid ().ToString ().Substring (0, 8));
+			Directory.CreateDirectory (dir);
+			try {
+				using (var zip = Xamarin.Tools.Zip.ZipArchive.Open (file, FileMode.Open)) {
+					foreach (var jar in zip.AsEnumerable ()
+						 .Where (e => Path.GetExtension (e.FullName).Equals (".dex", StringComparison.OrdinalIgnoreCase))) {
+						string jarfile = jar.Extract (destinationDir: dir);
+						LoadDex (jarfile, file);
+						File.Delete (jarfile);
+					}
+				}
+			} finally {
+				Directory.Delete (dir);
+			}
+		}
+
+		void LoadDex (string file, string sourceIdentifier = null)
+		{
+			bool isUnix = Environment.OSVersion.Platform == PlatformID.Unix;
+			var ext = isUnix ? ".sh" : ".bat";
+			var jar = Path.Combine (Path.GetTempPath (), Guid.NewGuid ().ToString ().Substring (0, 8) + Path.GetFileNameWithoutExtension (file) + ".jar");
+			var psi = isUnix ?
+				new ProcessStartInfo ("bash", Path.Combine (Directory.GetCurrentDirectory (), "dex2jar", "d2j-dex2jar" + ext) + $" -o {jar} {file}") :
+				new ProcessStartInfo (Path.Combine (Directory.GetCurrentDirectory (), "dex2jar", "d2j-dex2jar" + ext), $"-o {jar} {file}"); // maybe it works?
+			var proc = Process.Start (psi);
+			proc.WaitForExit ();
+			if (proc.ExitCode == 0) {
+				LoadJar (jar, sourceIdentifier);
+				File.Delete (jar);
+			}
+			else
+				throw new ApplicationException ($"dex2jar failed at exit code {proc.ExitCode}");
+		}
+
 		void LoadAar (string file, string sourceIdentifier = null)
 		{
 			sourceIdentifier = sourceIdentifier ?? file;
@@ -257,6 +295,12 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			foreach (var file in files) {
 				var identifer = GetFileId (file);
 				switch (Path.GetExtension (file.ToLowerInvariant ())) {
+				case ".apk":
+					LoadApk (file, identifer);
+					break;
+				case ".dex":
+					LoadDex (file, identifer);
+					break;
 				case ".aar":
 					LoadAar (file, identifer);
 					break;

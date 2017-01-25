@@ -77,6 +77,63 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="dex2jar\lib\antlr4-runtime-4.5.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\antlr-runtime-3.5.2.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\asm-debug-all-4.1.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\d2j-base-cmd-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\d2j-jasmin-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\d2j-smali-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-ir-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-reader-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-reader-api-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-tools-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-translator-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dex-writer-2.1-SNAPSHOT.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\dx-23.0.0.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\open-source-license.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\lib\org.abego.treelayout.core-1.0.1.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\d2j-dex2jar.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\d2j-dex2jar.sh">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="dex2jar\LICENSE.txt" />
+    <None Include="dex2jar\NOTICE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="dex2jar\" />
+    <Folder Include="dex2jar\lib\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
