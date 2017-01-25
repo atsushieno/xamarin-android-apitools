@@ -36,9 +36,10 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			bool isUnix = Environment.OSVersion.Platform == PlatformID.Unix;
 			var ext = isUnix ? ".sh" : ".bat";
 			var jar = Path.Combine (Path.GetTempPath (), Guid.NewGuid ().ToString ().Substring (0, 8) + Path.GetFileNameWithoutExtension (file) + ".jar");
+			var appPath = Path.GetDirectoryName (System.Reflection.Assembly.GetEntryAssembly ().Location);
 			var psi = isUnix ?
-				new ProcessStartInfo ("bash", Path.Combine (Directory.GetCurrentDirectory (), "dex2jar", "d2j-dex2jar" + ext) + $" -o {jar} {file}") :
-				new ProcessStartInfo (Path.Combine (Directory.GetCurrentDirectory (), "dex2jar", "d2j-dex2jar" + ext), $"-o {jar} {file}"); // maybe it works?
+				new ProcessStartInfo ("bash", Path.Combine (appPath, "dex2jar", "d2j-dex2jar" + ext) + $" -o {jar} {file}") :
+				new ProcessStartInfo (Path.Combine (appPath, "dex2jar", "d2j-dex2jar" + ext), $"-o {jar} {file}"); // maybe it works?
 			var proc = Process.Start (psi);
 			proc.WaitForExit ();
 			if (proc.ExitCode == 0) {
