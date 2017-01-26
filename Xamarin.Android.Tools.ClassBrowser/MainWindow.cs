@@ -210,6 +210,8 @@ namespace Xamarin.Android.Tools.ClassBrowser
 				dlg.Filters.Add (new FileDialogFilter ("Aar files", "*.aar"));
 				dlg.Filters.Add (new FileDialogFilter ("DLL files", "*.dll"));
 				dlg.Filters.Add (new FileDialogFilter ("XML files", "*.xml"));
+				dlg.Filters.Add (new FileDialogFilter ("DEX files", "*.dex"));
+				dlg.Filters.Add (new FileDialogFilter ("APK files", "*.apk"));
 
 				results = dlg.Run () ? dlg.FileNames : null;
 			}
