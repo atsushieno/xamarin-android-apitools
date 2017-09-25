@@ -19,11 +19,11 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			Directory.CreateDirectory (dir);
 			try {
 				using (var zip = Xamarin.Tools.Zip.ZipArchive.Open (file, FileMode.Open)) {
-					foreach (var jar in zip.AsEnumerable ()
+					foreach (var dex in zip.AsEnumerable ()
 						 .Where (e => Path.GetExtension (e.FullName).Equals (".dex", StringComparison.OrdinalIgnoreCase))) {
-						string jarfile = jar.Extract (destinationDir: dir);
-						LoadDex (jarfile, file);
-						File.Delete (jarfile);
+						string dexfile = dex.Extract (destinationDir: dir);
+						LoadDex (dexfile, file);
+						File.Delete (dexfile);
 					}
 				}
 			} finally {
@@ -362,7 +362,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			get {
 				if (string.IsNullOrEmpty (XamarinAndroidSdkPath) || !Directory.Exists (XamarinAndroidSdkPath))
 					return new string [0];
-				return Directory.GetDirectories (Path.Combine (XamarinAndroidSdkPath, "lib", "xbuild-frameworks", "MonoAndroid")).SelectMany (d => Directory.GetFiles (d, "Mono.Android.dll"));
+				return Directory.GetDirectories (Path.Combine (XamarinAndroidSdkPath, "lib", "xamarin.android", "xbuild-frameworks", "MonoAndroid")).SelectMany (d => Directory.GetFiles (d, "Mono.Android.dll"));
 			}
 		}
 	}
