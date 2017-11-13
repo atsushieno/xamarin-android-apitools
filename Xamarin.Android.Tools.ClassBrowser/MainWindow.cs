@@ -53,6 +53,7 @@ namespace Xamarin.Android.Tools.ClassBrowser
 			var extraCategories = new Dictionary<string,string> {
 				{"databinding", "android/m2repository/com/android/databinding"},
 				{"support library", "android/m2repository/com/android/support"},
+				{"constraint layout", "m2repository/com/android/support/constraint"},
 				{"google (play)", "google/m2repository/com/google/android"},
 				{"firebase", "google/m2repository/com/google/firebase"},
 			};
